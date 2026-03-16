@@ -1,0 +1,182 @@
+﻿
+> total-wholesall@0.1.0 lint
+> eslint
+
+
+C:\total wholesall\total-wholesall\src\app\admin\dashboard\page.tsx
+  22:24  warning  'setDateFilter' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  53:24  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\dashboard\page.tsx:53:24
+  51 |         }
+  52 |         const hour = new Date().getHours();
+> 53 |         if (hour < 12) setGreeting("Good Morning");
+     |                        ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  54 |         else if (hour < 17) setGreeting("Good Afternoon");
+  55 |         else setGreeting("Good Evening");
+  56 |           react-hooks/set-state-in-effect
+  62:22  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\dashboard\page.tsx:62:22
+  60 |
+  61 |     useEffect(() => {
+> 62 |         if (mounted) loadData();
+     |                      ^^^^^^^^ Avoid calling setState() directly within an effect
+  63 |     }, [dateFilter, mounted, loadData]);
+  64 |
+  65 |     const handleLogout = () => {                                                                                              react-hooks/set-state-in-effect
+
+C:\total wholesall\total-wholesall\src\app\admin\dispatch\page.tsx
+  30:18  warning  'setDate' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  39:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\dispatch\page.tsx:39:9
+  37 |             return;
+  38 |         }
+> 39 |         setProducts(getProducts());
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  40 |         setSalesPersons(getSalesPersons());
+  41 |         setMounted(true);
+  42 |     }, [router]);                                                                               react-hooks/set-state-in-effect
+  49:17  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\dispatch\page.tsx:49:17
+  47 |             const product = products.find((p) => p.id === productId);
+  48 |             if (product) {
+> 49 |                 setPricePerUnit(product.pricePerUnit.toString());
+     |                 ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  50 |             }
+  51 |         }
+  52 |     }, [productId, products]);  react-hooks/set-state-in-effect
+  94:23  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-explicit-any
+
+C:\total wholesall\total-wholesall\src\app\admin\drivers\page.tsx
+  50:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\drivers\page.tsx:50:9
+  48 |             return;
+  49 |         }
+> 50 |         setMounted(true);
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  51 |         loadData();
+  52 |
+  53 |         // Auto-refresh every 30 seconds  react-hooks/set-state-in-effect
+
+C:\total wholesall\total-wholesall\src\app\admin\products\page.tsx
+  41:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\products\page.tsx:41:9
+  39 |             return;
+  40 |         }
+> 41 |         setProducts(getProducts());
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  42 |         setMounted(true);
+  43 |     }, [router]);
+  44 |  react-hooks/set-state-in-effect
+
+C:\total wholesall\total-wholesall\src\app\admin\reports\page.tsx
+   31:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\reports\page.tsx:31:9
+  29 |             return;
+  30 |         }
+> 31 |         setSalesPersons(getSalesPersons());
+     |         ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  32 |         setMounted(true);
+  33 |     }, [router]);
+  34 |  react-hooks/set-state-in-effect
+  107:13  warning  'dispatches' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+
+C:\total wholesall\total-wholesall\src\app\admin\users\page.tsx
+  33:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\admin\users\page.tsx:33:9
+  31 |             return;
+  32 |         }
+> 33 |         setSalesPersons(getSalesPersons());
+     |         ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |         setMounted(true);
+  35 |     }, [router]);
+  36 |  react-hooks/set-state-in-effect
+  55:18  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  85:18  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  97:22  warning  'err' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+
+C:\total wholesall\total-wholesall\src\app\layout.tsx
+  19:9  warning  Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+C:\total wholesall\total-wholesall\src\app\page.tsx
+  22:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\total wholesall\total-wholesall\src\app\page.tsx:22:5
+  20 |       router.replace(user.role === "admin" ? "/admin/dashboard" : "/sales/dashboard");
+  21 |     }
+> 22 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  23 |   }, [router]);
+  24 |
+  25 |   const handleLogin = async (e: React.FormEvent) => {  react-hooks/set-state-in-effect
+
+C:\total wholesall\total-wholesall\src\app\sales\dashboard\page.tsx
+  33:18  warning  'setDate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\total wholesall\total-wholesall\src\lib\store.ts
+  108:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 20 problems (12 errors, 8 warnings)
+

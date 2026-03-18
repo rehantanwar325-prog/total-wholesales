@@ -6,7 +6,7 @@ export function exportToCSV(data: Record<string, unknown>[], filename: string): 
     const csvRows: string[] = [];
 
     // Header row
-    csvRows.push(headers.join(","));
+    csvRows.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(","));
 
     // Data rows
     data.forEach((row) => {
@@ -19,7 +19,7 @@ export function exportToCSV(data: Record<string, unknown>[], filename: string): 
         csvRows.push(values.join(","));
     });
 
-    const csvString = csvRows.join("\n");
+    const csvString = '\uFEFF' + csvRows.join("\n");
     const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

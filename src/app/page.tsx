@@ -106,7 +106,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     className="login-input"
-                    placeholder="e.g. admin"
+                    placeholder="Enter Login ID"
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
                     autoComplete="username"

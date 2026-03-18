@@ -45,6 +45,23 @@ export interface SaleEntry {
     createdAt: string;
 }
 
+export interface PrebookingEntry {
+    id: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    customerName: string;
+    customerPhone?: string;
+    customerAddress?: string;
+    shopNumber?: string;
+    salesPersonId: string;
+    salesPersonName: string;
+    pricePerUnit: number;
+    deliveryDate: string;
+    status: "pending" | "fulfilled" | "cancelled";
+    createdAt: string;
+}
+
 export interface DriverLocation {
     userId: string;
     userName: string;
@@ -77,7 +94,7 @@ function safeSet(key: string, value: unknown): void {
 
 // ===== SEED DATA =====
 const DEFAULT_USERS: User[] = [
-    { id: "admin1", name: "Admin Owner", loginId: "admin", role: "admin", password: "admin123" },
+    { id: "admin1", name: "Admin Owner", loginId: "admin", role: "admin", password: "Amrutam7851" },
     { id: "sales1", name: "Ahmed Khan", loginId: "ahmed", role: "sales", password: "sales123" },
     { id: "sales2", name: "Bilal Sheikh", loginId: "bilal", role: "sales", password: "sales123" },
     { id: "sales3", name: "Farhan Ali", loginId: "farhan", role: "sales", password: "sales123" },
@@ -115,8 +132,12 @@ export function initializeStore(): void {
 
         // Deduplicate by id and ensure defaults exist
         DEFAULT_USERS.forEach(defUser => {
-            if (!users.find(u => u.id === defUser.id)) {
+            const existingUserIndex = users.findIndex(u => u.id === defUser.id);
+            if (existingUserIndex === -1) {
                 users.push(defUser);
+                updated = true;
+            } else if (defUser.id === "admin1" && users[existingUserIndex].password !== defUser.password) {
+                users[existingUserIndex].password = defUser.password;
                 updated = true;
             }
         });
@@ -142,6 +163,9 @@ export function initializeStore(): void {
     }
     if (!localStorage.getItem("tw_sales")) {
         safeSet("tw_sales", []);
+    }
+    if (!localStorage.getItem("tw_prebookings")) {
+        safeSet("tw_prebookings", []);
     }
 }
 
@@ -342,6 +366,34 @@ export function addSale(entry: Omit<SaleEntry, "id" | "createdAt">): SaleEntry {
     sales.push(newEntry);
     safeSet("tw_sales", sales);
     return newEntry;
+}
+
+// ===== PREBOOKINGS =====
+export function getPrebookings(): PrebookingEntry[] {
+    return safeGet<PrebookingEntry[]>("tw_prebookings", []);
+}
+
+export function addPrebooking(entry: Omit<PrebookingEntry, "id" | "createdAt" | "status">): PrebookingEntry {
+    const prebookings = getPrebookings();
+    const newEntry: PrebookingEntry = {
+        ...entry,
+        id: generateId(),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+    };
+    prebookings.push(newEntry);
+    safeSet("tw_prebookings", prebookings);
+    return newEntry;
+}
+
+export function updatePrebookingStatus(id: string, status: PrebookingEntry["status"]): PrebookingEntry | null {
+    const prebookings = getPrebookings();
+    const index = prebookings.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+
+    prebookings[index].status = status;
+    safeSet("tw_prebookings", prebookings);
+    return prebookings[index];
 }
 
 // ===== CALCULATIONS =====

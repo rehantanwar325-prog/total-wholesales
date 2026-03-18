@@ -1,0 +1,39 @@
+
+C:\total wholesall\total-wholesall\src\app\admin\dashboard\page.tsx
+  23:24  warning  'setDateFilter' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  41:58  warning  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+C:\total wholesall\total-wholesall\src\app\admin\dispatch\page.tsx
+  142:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\total wholesall\total-wholesall\src\app\admin\reports\page.tsx
+  107:13  warning  'dispatches' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\total wholesall\total-wholesall\src\app\admin\users\page.tsx
+  55:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  85:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  97:22  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\total wholesall\total-wholesall\src\app\layout.tsx
+  19:9  warning  Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+C:\total wholesall\total-wholesall\src\app\sales\dashboard\page.tsx
+    35:18  warning  'setDate' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   131:13  error    'namesPattern' is never reassigned. Use 'const' instead  prefer-const
+   196:13  error    'namesPattern' is never reassigned. Use 'const' instead  prefer-const
+   413:42  warning  'idx' is defined but never used                          @typescript-eslint/no-unused-vars
+   969:61  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   969:79  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   971:45  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   971:72  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   973:44  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   973:71  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   974:43  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  1033:63  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  1033:90  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  1036:60  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  1036:87  warning  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+
+✖ 23 problems (2 errors, 21 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+

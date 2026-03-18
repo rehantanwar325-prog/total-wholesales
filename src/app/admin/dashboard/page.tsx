@@ -9,6 +9,7 @@ import {
     getSalesPersonStockStatus,
     getDispatches,
     getSales,
+    getPrebookings,
     getTodayString,
     initializeStore,
     getProducts,
@@ -16,30 +17,68 @@ import {
 import type { Product } from "@/lib/store";
 import { exportToCSV } from "@/lib/export";
 
+interface Activity {
+    id: string;
+    type: 'sale' | 'prebooking';
+    message: string;
+    time: string;
+}
+
 export default function AdminDashboard() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
-    const [dateFilter, setDateFilter] = useState(getTodayString());
+    const [dateFilter] = useState(getTodayString());
     const [greeting, setGreeting] = useState("Good Morning");
     const [summary, setSummary] = useState({ totalDispatched: 0, totalSold: 0, remainingStock: 0, totalRevenue: 0 });
     const [salesPersonStatus, setSalesPersonStatus] = useState<ReturnType<typeof getSalesPersonStockStatus>>([]);
     const [recentDispatches, setRecentDispatches] = useState<ReturnType<typeof getDispatches>>([]);
     const [recentSales, setRecentSales] = useState<ReturnType<typeof getSales>>([]);
+    const [prebookings, setPrebookings] = useState<ReturnType<typeof getPrebookings>>([]);
+    const [allPendingPrebookings, setAllPendingPrebookings] = useState<ReturnType<typeof getPrebookings>>([]);
     const [products, setProducts] = useState<Product[]>([]);
-    const [activeTab, setActiveTab] = useState<"overview" | "dispatches" | "sales">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "dispatches" | "sales" | "prebookings" | "activity">("overview");
     const [showStockModal, setShowStockModal] = useState(false);
     const [showRevenueModal, setShowRevenueModal] = useState(false);
     const [showStockSoldModal, setShowStockSoldModal] = useState(false);
     const [showStockSentModal, setShowStockSentModal] = useState(false);
     const [shopSearch, setShopSearch] = useState("");
+    
+    // Notifications State
+    const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+    const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+    const [hasUnread, setHasUnread] = useState(false);
 
     const loadData = useCallback(() => {
         const s = getStockSummary(undefined, dateFilter);
         setSummary(s);
         setSalesPersonStatus(getSalesPersonStockStatus());
         setRecentDispatches(getDispatches().filter((d) => d.date === dateFilter).reverse());
-        setRecentSales(getSales().filter((s) => s.date === dateFilter).reverse());
+        const allSales = getSales();
+        const allPre = getPrebookings();
+
+        setRecentSales(allSales.filter((s) => s.date === dateFilter).reverse());
+        setPrebookings(allPre.filter((p) => p.deliveryDate === dateFilter).reverse());
+        setAllPendingPrebookings(allPre.filter((p) => p.status === "pending"));
         setProducts(getProducts());
+
+        const mappedSales: Activity[] = allSales.map(s => ({
+            id: s.id,
+            type: 'sale',
+            message: `${s.salesPersonName} sold ${s.quantitySold}kg of ${s.productName} to ${s.shopNumber || s.customerName || "a customer"}.`,
+            time: s.createdAt
+        }));
+        const mappedPre: Activity[] = allPre.map(p => ({
+            id: p.id,
+            type: 'prebooking',
+            message: `${p.salesPersonName} pre-booked ${p.quantity}kg of ${p.productName} for ${p.shopNumber || p.customerName || "a customer"} (Delivery: ${p.deliveryDate}).`,
+            time: p.createdAt
+        }));
+
+        const activity = [...mappedSales, ...mappedPre].sort((a, b) => b.time.localeCompare(a.time)).slice(0, 50);
+        setRecentActivity(activity);
+        
+        const todayStr = getTodayString();
+        setHasUnread(activity.length > 0 && activity[0].time.startsWith(todayStr));
     }, [dateFilter]);
 
     useEffect(() => {
@@ -90,6 +129,15 @@ export default function AdminDashboard() {
             "Total Amount": s.quantitySold * s.pricePerUnit,
         }));
         exportToCSV(data, `sales_${dateFilter}`);
+    };
+
+    const handleExportActivity = () => {
+        const data = recentActivity.map((a) => ({
+            Time: new Date(a.time).toLocaleString("en-IN"),
+            Type: a.type.toUpperCase(),
+            Message: a.message,
+        }));
+        exportToCSV(data, `activity_${getTodayString()}`);
     };
 
 
@@ -147,6 +195,17 @@ export default function AdminDashboard() {
                             <p className="dash-greeting-sub">Here&apos;s your business overview for today</p>
                         </div>
                         <div className="dash-date-filter" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <button
+                                onClick={() => { setShowNotificationsModal(true); setHasUnread(false); }}
+                                style={{ position: "relative", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#e2e8f0", marginRight: 8, transition: "0.2s" }}
+                                onMouseOver={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
+                                onMouseOut={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                {hasUnread && (
+                                    <span style={{ position: "absolute", top: 8, right: 9, width: 8, height: 8, background: "#ef4444", borderRadius: "50%", border: "2px solid #0f0a2e" }} />
+                                )}
+                            </button>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                             <span style={{ color: "#e2e8f0", fontWeight: 600, fontSize: "0.95rem" }}>
                                 {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
@@ -156,8 +215,10 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
+
+
                 {/* Quick Navigation */}
-                <div className="dash-nav-grid fade-in" style={{ animationDelay: "0.05s", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+                <div className="dash-nav-grid fade-in" style={{ animationDelay: "0.05s" }}>
                     {[
                         { label: "New Dispatch", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.29 7 12 12 20.71 7" /><line x1="12" y1="22" x2="12" y2="12" /></svg>, color: "#6366f1", href: "/admin/dispatch", primary: true },
                         { label: "Products", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>, color: "#8b5cf6", href: "/admin/products" },
@@ -180,7 +241,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Stat Cards */}
-                <div className="dash-stats-grid fade-in" style={{ animationDelay: "0.1s", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+                <div className="dash-stats-grid fade-in" style={{ animationDelay: "0.1s" }}>
                     <button className="dash-stat-card dash-stat-sent" onClick={() => setShowStockSentModal(true)} style={{ textAlign: "left", width: "100%", position: "relative", padding: 24, borderRadius: 20, cursor: "pointer", overflow: "hidden", border: "1px solid rgba(99,102,241,0.15)", background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05))" }}>
                         <div className="dash-stat-glow" style={{ pointerEvents: "none" }} />
                         <div className="dash-stat-icon-wrap" style={{ width: 48, height: 48, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -223,18 +284,20 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Tabs */}
-                <div className="dash-tabs fade-in" style={{ animationDelay: "0.15s", display: "flex", gap: 4, padding: 4, borderRadius: 14, background: "rgba(15,10,46,0.6)", border: "1px solid rgba(99,102,241,0.1)" }}>
-                    {(["overview", "dispatches", "sales"] as const).map((tab) => (
+                <div className="dash-tabs fade-in overflow-x-auto tabs-container" style={{ animationDelay: "0.15s", display: "flex", gap: 4, padding: 4, borderRadius: 14, background: "rgba(15,10,46,0.6)", border: "1px solid rgba(99,102,241,0.1)" }}>
+                    {(["overview", "dispatches", "sales", "prebookings", "activity"] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`dash-tab ${activeTab === tab ? 'dash-tab-active' : ''}`}
-                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 16px", borderRadius: 10, border: "none", background: activeTab === tab ? "linear-gradient(135deg, #6366f1, #4f46e5)" : "transparent", color: activeTab === tab ? "#ffffff" : "#64748b", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+                            className={`dash-tab ${activeTab === tab ? 'dash-tab-active' : ''} flex-none whitespace-nowrap`}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 16px", borderRadius: 10, border: "none", background: activeTab === tab ? "linear-gradient(135deg, #6366f1, #4f46e5)" : "transparent", color: activeTab === tab ? "#ffffff" : "#64748b", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
                         >
                             {tab === "overview" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>}
                             {tab === "dispatches" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>}
                             {tab === "sales" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>}
-                            <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+                            {tab === "prebookings" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
+                            {tab === "activity" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>}
+                            <span>{tab === "prebookings" ? "Pre-bookings" : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
                         </button>
                     ))}
                 </div>
@@ -248,7 +311,7 @@ export default function AdminDashboard() {
                                 Sales Person Stock Status
                             </h3>
                         </div>
-                        <div className="dash-table-wrap">
+                        <div className="dash-table-wrap overflow-x-auto">
                             <table className="data-table">
                                 <thead>
                                     <tr>
@@ -298,6 +361,59 @@ export default function AdminDashboard() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pending Pre-bookings Summary */}
+                        <div className="dash-section-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid rgba(99,102,241,0.08)", marginTop: 16, borderTop: "1px solid rgba(99,102,241,0.08)" }}>
+                            <h3 className="dash-section-title" style={{ color: "#fbcfe8" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f472b6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                                Pending Pre-bookings Summary
+                            </h3>
+                        </div>
+                        <div className="dash-table-wrap overflow-x-auto">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Delivery Date</th>
+                                        <th>Product</th>
+                                        <th>Total Qty Needed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(() => {
+                                        const grouped = allPendingPrebookings.reduce((acc, p) => {
+                                            const key = `${p.deliveryDate}_${p.productName}`;
+                                            if (!acc[key]) {
+                                                acc[key] = { date: p.deliveryDate, product: p.productName, qty: 0 };
+                                            }
+                                            acc[key].qty += p.quantity;
+                                            return acc;
+                                        }, {} as Record<string, { date: string, product: string, qty: number }>);
+                                        
+                                        const sorted = Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date) || a.product.localeCompare(b.product));
+
+                                        if (sorted.length === 0) {
+                                            return (
+                                                <tr>
+                                                    <td colSpan={3} className="text-center py-8" style={{ color: "#64748b" }}>
+                                                        No pending pre-bookings
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
+
+                                        return sorted.map((item, idx) => (
+                                            <tr key={idx}>
+                                                <td style={{ color: item.date === getTodayString() ? "#f472b6" : "#e2e8f0", fontWeight: item.date === getTodayString() ? 600 : 400 }}>
+                                                    {item.date === getTodayString() ? `${item.date} (Today)` : item.date}
+                                                </td>
+                                                <td className="font-medium" style={{ color: "#fbcfe8" }}>{item.product}</td>
+                                                <td><span className="dash-num" style={{ background: "rgba(236,72,153,0.15)", color: "#fbcfe8", border: "1px solid rgba(236,72,153,0.3)" }}>{item.qty}</span></td>
+                                            </tr>
+                                        ));
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
@@ -314,7 +430,7 @@ export default function AdminDashboard() {
                                 Export CSV
                             </button>
                         </div>
-                        <div className="dash-table-wrap">
+                        <div className="dash-table-wrap overflow-x-auto">
                             <table className="data-table">
                                 <thead>
                                     <tr>
@@ -359,7 +475,7 @@ export default function AdminDashboard() {
                                 Export CSV
                             </button>
                         </div>
-                        <div className="dash-table-wrap">
+                        <div className="dash-table-wrap overflow-x-auto">
                             <table className="data-table">
                                 <thead>
                                     <tr>
@@ -390,6 +506,123 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* Pre-bookings Tab */}
+                {activeTab === "prebookings" && (
+                    <div className="dash-section fade-in" style={{ borderRadius: 20, background: "rgba(15,10,46,0.6)", backdropFilter: "blur(12px)", border: "1px solid rgba(236,72,153,0.3)", overflow: "hidden", boxShadow: "0 0 20px rgba(236,72,153,0.1)" }}>
+                        <div className="dash-section-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid rgba(236,72,153,0.15)" }}>
+                            <h3 className="dash-section-title" style={{ color: "#fbcfe8" }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f472b6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                Pre-bookings Delivery For — {dateFilter}
+                            </h3>
+                            {/* <button className="dash-export-btn" style={{ background: "rgba(236,72,153,0.1)", color: "#f472b6", border: "1px solid rgba(236,72,153,0.3)" }}>
+                                Export CSV
+                            </button> */}
+                        </div>
+
+                        {/* Summary of exactly how many items need to be dispatched today */}
+                        {prebookings.length > 0 && (
+                            <div style={{ padding: "16px 24px", background: "rgba(236,72,153,0.05)", borderBottom: "1px solid rgba(236,72,153,0.1)" }}>
+                                <p style={{ fontSize: "14px", fontWeight: 600, color: "#f9a8d4", marginBottom: "8px" }}>Items to dispatch for this date:</p>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                                    {Object.entries(
+                                        prebookings.reduce((acc, p) => {
+                                            acc[p.productName] = (acc[p.productName] || 0) + p.quantity;
+                                            return acc;
+                                        }, {} as Record<string, number>)
+                                    ).map(([name, qty]) => (
+                                        <span key={name} style={{ background: "rgba(236,72,153,0.15)", color: "#fbcfe8", padding: "4px 10px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", border: "1px solid rgba(236,72,153,0.3)" }}>
+                                            {qty} × {name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="dash-table-wrap overflow-x-auto">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Qty</th>
+                                        <th>Customer</th>
+                                        <th>Sales Person</th>
+                                        <th>Status</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {prebookings.map((p) => (
+                                        <tr key={p.id}>
+                                            <td className="font-medium" style={{ color: "#e2e8f0" }}>{p.productName}</td>
+                                            <td><span className="dash-num">{p.quantity}</span></td>
+                                            <td>{p.shopNumber || p.customerName || "—"}</td>
+                                            <td>{p.salesPersonName}</td>
+                                            <td>
+                                                <span className="badge" style={{
+                                                    background: p.status === "pending" ? "rgba(245,158,11,0.15)" : p.status === "fulfilled" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
+                                                    color: p.status === "pending" ? "#fbbf24" : p.status === "fulfilled" ? "#34d399" : "#f87171",
+                                                    border: `1px solid ${p.status === "pending" ? "rgba(245,158,11,0.3)" : p.status === "fulfilled" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`
+                                                }}>
+                                                    {p.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td style={{ color: "#f472b6", fontWeight: 600 }}>₹{(p.quantity * p.pricePerUnit).toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                    {prebookings.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="text-center py-8" style={{ color: "#64748b" }}>No pre-bookings scheduled for delivery on this date</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Activity Tab */}
+                {activeTab === "activity" && (
+                    <div className="dash-section fade-in" style={{ borderRadius: 20, background: "rgba(15,10,46,0.6)", backdropFilter: "blur(12px)", border: "1px solid rgba(99,102,241,0.1)", overflow: "hidden" }}>
+                        <div className="dash-section-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid rgba(99,102,241,0.08)" }}>
+                            <h3 className="dash-section-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                                Recent Activity
+                            </h3>
+                            <button onClick={handleExportActivity} className="dash-export-btn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                                Export CSV
+                            </button>
+                        </div>
+                        <div className="p-4 flex flex-col gap-3" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+                            {recentActivity.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">No recent activity.</div>
+                            ) : (
+                                recentActivity.map((act) => (
+                                    <div key={act.id + act.type} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 12 }}>
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                            background: act.type === "sale" ? "rgba(16,185,129,0.15)" : "rgba(236,72,153,0.15)",
+                                            color: act.type === "sale" ? "#34d399" : "#f472b6"
+                                        }}>
+                                            {act.type === "sale" ? (
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                                            ) : (
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: "14px", color: "#e2e8f0", lineHeight: 1.4 }}>{act.message}</div>
+                                            <div style={{ fontSize: "11px", color: "#64748b", marginTop: 4 }}>
+                                                {new Date(act.time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "numeric", hour12: true })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* ===== MODALS ===== */}
@@ -397,7 +630,7 @@ export default function AdminDashboard() {
             {/* Warehouse Stock Modal */}
             {showStockModal && (
                 <ModalWrapper onClose={() => setShowStockModal(false)} title="Warehouse Stock" subtitle="Current available items in factory" icon="🏢" iconBg="rgba(99, 102, 241, 0.15)">
-                    <div className="dash-table-wrap">
+                    <div className="dash-table-wrap overflow-x-auto">
                         <table className="data-table w-full mb-0">
                             <thead><tr><th className="text-left pl-4">Product Name</th><th className="text-right">Price/kg</th><th className="text-right pr-4">Total Stock</th></tr></thead>
                             <tbody>
@@ -582,6 +815,39 @@ export default function AdminDashboard() {
                                 })()}
                             </tbody>
                         </table>
+                    </div>
+                </ModalWrapper>
+            )}
+
+            {/* Global Notifications Modal */}
+            {showNotificationsModal && (
+                <ModalWrapper onClose={() => setShowNotificationsModal(false)} title="Recent Activity" subtitle="Real-time updates of all sales and pre-bookings" icon="🔔" iconBg="rgba(236, 72, 153, 0.15)">
+                    <div className="p-4 flex flex-col gap-3" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+                        {recentActivity.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400">No recent activity.</div>
+                        ) : (
+                            recentActivity.map((act) => (
+                                <div key={act.id + act.type} style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 12 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                        background: act.type === "sale" ? "rgba(16,185,129,0.15)" : "rgba(236,72,153,0.15)",
+                                        color: act.type === "sale" ? "#34d399" : "#f472b6"
+                                    }}>
+                                        {act.type === "sale" ? (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                                        ) : (
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: "14px", color: "#e2e8f0", lineHeight: 1.4 }}>{act.message}</div>
+                                        <div style={{ fontSize: "11px", color: "#64748b", marginTop: 4 }}>
+                                            {new Date(act.time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "numeric", hour12: true })}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </ModalWrapper>
             )}

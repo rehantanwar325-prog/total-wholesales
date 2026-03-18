@@ -52,7 +52,7 @@ export default function ManageUsersPage() {
             setPassword("");
             setSalesPersons(getSalesPersons()); // Refresh list
             setTimeout(() => setSuccess(""), 3000);
-        } catch (err) {
+        } catch {
             setError("Failed to create user.");
         }
     };
@@ -82,7 +82,7 @@ export default function ManageUsersPage() {
             setEditingUser(null);
             setSalesPersons(getSalesPersons()); // Refresh list
             setTimeout(() => setSuccess(""), 3000);
-        } catch (err) {
+        } catch {
             setError("Failed to update user.");
         }
     };
@@ -94,7 +94,7 @@ export default function ManageUsersPage() {
                 setSalesPersons(updatedUsers);
                 setSuccess(`Successfully deleted ${name}.`);
                 setTimeout(() => setSuccess(""), 3000);
-            } catch (err) {
+            } catch {
                 setError("Failed to delete user.");
             }
         }

@@ -104,7 +104,7 @@ export default function ReportsPage() {
         );
     }
 
-    const { dispatches, sales } = getFilteredData();
+    const { sales } = getFilteredData();
 
     // Inventory summary: aggregate by product
     const inventoryMap: Record<string, { product: string; dispatched: number; sold: number; remaining: number }> = {};
@@ -173,7 +173,7 @@ export default function ReportsPage() {
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveReport(tab.key)}
-                                className="flex-1 lg:flex-none py-2.5 px-6 rounded-xl text-sm font-bold transition-all whitespace-nowrap box-border"
+                                className="flex-1 lg:flex-none py-3 px-8 rounded-xl text-lg font-bold transition-all whitespace-nowrap box-border"
                                 style={{
                                     background: activeReport === tab.key ? "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))" : "transparent",
                                     color: activeReport === tab.key ? "#fff" : "#94a3b8",
@@ -190,11 +190,11 @@ export default function ReportsPage() {
                     <div className="flex flex-wrap gap-4 w-full lg:w-auto items-center">
                         <div className="relative flex-1 min-w-[200px]">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                             </div>
                             <input
                                 type="text"
-                                className="w-full py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none transition-all"
+                                className="w-full py-3.5 pl-12 pr-4 rounded-xl text-base focus:outline-none transition-all"
                                 placeholder="Search queries..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -204,11 +204,11 @@ export default function ReportsPage() {
                         
                         <div className="relative flex-1 min-w-[150px]">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             </div>
                             <input
                                 type="date"
-                                className="w-full py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none transition-all"
+                                className="w-full py-3.5 pl-12 pr-4 rounded-xl text-base focus:outline-none transition-all"
                                 value={dateFilter}
                                 onChange={(e) => setDateFilter(e.target.value)}
                                 style={{ background: "rgba(15,10,46,0.6)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0" }}
@@ -217,13 +217,13 @@ export default function ReportsPage() {
 
                         <div className="relative flex-1 min-w-[150px]">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             </div>
                             <select 
-                                className="w-full py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none transition-all appearance-none" 
+                                className="w-full py-3.5 pl-12 pr-4 rounded-xl text-base focus:outline-none transition-all appearance-none" 
                                 value={driverFilter} 
                                 onChange={(e) => setDriverFilter(e.target.value)}
-                                style={{ background: "rgba(15,10,46,0.6)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}
+                                style={{ background: "rgba(15,10,46,0.6)", border: "1px solid rgba(255,255,255,0.08)", color: "#e2e8f0", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 16px center" }}
                             >
                                 <option value="">All Drivers</option>
                                 {salesPersons.map((sp) => (

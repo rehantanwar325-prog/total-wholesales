@@ -1,0 +1,22 @@
+
+C:\total wholesall\total-wholesall\src\app\admin\dispatch\page.tsx
+  142:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\total wholesall\total-wholesall\src\app\layout.tsx
+  19:9  warning  Custom fonts not added in `pages/_document.js` will only load for a single page. This is discouraged. See: https://nextjs.org/docs/messages/no-page-custom-font  @next/next/no-page-custom-font
+
+C:\total wholesall\total-wholesall\src\app\sales\dashboard\page.tsx
+   969:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   969:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   971:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   971:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   973:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   973:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   974:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1033:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1033:90  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1036:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1036:87  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 13 problems (0 errors, 13 warnings)
+

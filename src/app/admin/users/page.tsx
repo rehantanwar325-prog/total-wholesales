@@ -169,7 +169,7 @@ export default function ManageUsersPage() {
                                 <input
                                     type="text"
                                     className="input-field"
-                                    placeholder="e.g. Kashif Ali"
+                                    placeholder="Full Name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
@@ -184,7 +184,7 @@ export default function ManageUsersPage() {
                                 <input
                                     type="text"
                                     className="input-field"
-                                    placeholder="e.g. kashif"
+                                    placeholder="Login ID"
                                     value={loginId}
                                     onChange={(e) => setLoginId(e.target.value)}
                                     required

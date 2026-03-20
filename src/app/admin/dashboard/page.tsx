@@ -13,8 +13,9 @@ import {
     getTodayString,
     initializeStore,
     getProducts,
+    getReturns,
 } from "@/lib/store";
-import type { Product } from "@/lib/store";
+import type { Product, ReturnEntry } from "@/lib/store";
 import { exportToCSV } from "@/lib/export";
 
 interface Activity {
@@ -36,12 +37,16 @@ export default function AdminDashboard() {
     const [prebookings, setPrebookings] = useState<ReturnType<typeof getPrebookings>>([]);
     const [allPendingPrebookings, setAllPendingPrebookings] = useState<ReturnType<typeof getPrebookings>>([]);
     const [products, setProducts] = useState<Product[]>([]);
-    const [activeTab, setActiveTab] = useState<"overview" | "dispatches" | "sales" | "prebookings" | "activity">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "dispatches" | "sales" | "prebookings" | "activity" | "returns">("overview");
     const [showStockModal, setShowStockModal] = useState(false);
     const [showRevenueModal, setShowRevenueModal] = useState(false);
     const [showStockSoldModal, setShowStockSoldModal] = useState(false);
     const [showStockSentModal, setShowStockSentModal] = useState(false);
     const [shopSearch, setShopSearch] = useState("");
+
+    // Returns state
+    const [allReturns, setAllReturns] = useState<ReturnEntry[]>([]);
+    const [returnFilter, setReturnFilter] = useState<"all" | "defective" | "return">("all");
     
     // Notifications State
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
@@ -60,17 +65,18 @@ export default function AdminDashboard() {
         setPrebookings(allPre.filter((p) => p.deliveryDate === dateFilter).reverse());
         setAllPendingPrebookings(allPre.filter((p) => p.status === "pending"));
         setProducts(getProducts());
+        setAllReturns(getReturns().reverse());
 
         const mappedSales: Activity[] = allSales.map(s => ({
             id: s.id,
             type: 'sale',
-            message: `${s.salesPersonName} sold ${s.quantitySold}kg of ${s.productName} to ${s.shopNumber || s.customerName || "a customer"}.`,
+            message: `${s.salesPersonName} sold ${s.quantitySold}kg of ${s.productName} to ${s.customerName || "a customer"}.`,
             time: s.createdAt
         }));
         const mappedPre: Activity[] = allPre.map(p => ({
             id: p.id,
             type: 'prebooking',
-            message: `${p.salesPersonName} pre-booked ${p.quantity}kg of ${p.productName} for ${p.shopNumber || p.customerName || "a customer"} (Delivery: ${p.deliveryDate}).`,
+            message: `${p.salesPersonName} pre-booked ${p.quantity}kg of ${p.productName} for ${p.customerName || "a customer"} (Delivery: ${p.deliveryDate}).`,
             time: p.createdAt
         }));
 
@@ -140,6 +146,19 @@ export default function AdminDashboard() {
         exportToCSV(data, `activity_${getTodayString()}`);
     };
 
+    const handleExportReturns = () => {
+        const filtered = returnFilter === "all" ? allReturns : allReturns.filter(r => r.type === returnFilter);
+        const data = filtered.map((r) => ({
+            Date: r.date,
+            Type: r.type.toUpperCase(),
+            Product: r.productName,
+            Quantity: r.quantity,
+            Reason: r.reason,
+            "Sales Person": r.salesPersonName,
+            Customer: r.customerName || "—",
+        }));
+        exportToCSV(data, `returns_${returnFilter}_${getTodayString()}`);
+    };
 
     if (!mounted) {
         return (
@@ -215,6 +234,41 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
+                {/* Collection Reminders Section */}
+                {(() => {
+                    const today = getTodayString();
+                    const duePayments = getSales().filter(s => s.paymentMethod === "credit" && s.creditDueDate === today);
+                    if (duePayments.length === 0) return null;
+                    
+                    return (
+                        <div className="p-6 rounded-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-500" style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05))", border: "1px solid rgba(239,68,68,0.3)", boxShadow: "0 10px 30px -5px rgba(0,0,0,0.4)" }}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-red-500/20 text-red-500 shadow-lg shadow-red-500/20">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg text-red-100">⚠️ Collections Due Today ({duePayments.length})</h4>
+                                    <p className="text-xs font-bold text-red-400/80 uppercase tracking-widest">Aj in customers se payment leni hai</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                {duePayments.map(p => (
+                                    <div key={p.id} className="p-4 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1 transition-all hover:border-red-500/30">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-sm font-black text-slate-100">{p.customerName || "—"}</span>
+                                            <span className="text-sm font-black text-red-400">₹{(p.quantitySold * p.pricePerUnit).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px] font-bold">
+                                            <span className="text-slate-400 italic">By {p.salesPersonName}</span>
+                                            <span className="text-slate-500">{p.productName} ({p.quantitySold}kg)</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
+
 
 
                 {/* Quick Navigation */}
@@ -285,7 +339,7 @@ export default function AdminDashboard() {
 
                 {/* Tabs */}
                 <div className="dash-tabs fade-in overflow-x-auto tabs-container" style={{ animationDelay: "0.15s", display: "flex", gap: 4, padding: 4, borderRadius: 14, background: "rgba(15,10,46,0.6)", border: "1px solid rgba(99,102,241,0.1)" }}>
-                    {(["overview", "dispatches", "sales", "prebookings", "activity"] as const).map((tab) => (
+                    {(["overview", "dispatches", "sales", "prebookings", "activity", "returns"] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -297,7 +351,8 @@ export default function AdminDashboard() {
                             {tab === "sales" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>}
                             {tab === "prebookings" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
                             {tab === "activity" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>}
-                            <span>{tab === "prebookings" ? "Pre-bookings" : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+                            {tab === "returns" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>}
+                            <span>{tab === "prebookings" ? "Pre-bookings" : tab === "returns" ? "Returns" : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
                         </button>
                     ))}
                 </div>
@@ -487,20 +542,54 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {recentSales.map((s) => (
-                                        <tr key={s.id}>
-                                            <td className="font-medium" style={{ color: "#e2e8f0" }}>{s.productName}</td>
-                                            <td><span className="dash-num">{s.quantitySold}</span></td>
-                                            <td>{s.customerName || "—"}</td>
-                                            <td>{s.salesPersonName}</td>
-                                            <td style={{ color: "#34d399", fontWeight: 600 }}>₹{(s.quantitySold * s.pricePerUnit).toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                    {recentSales.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="text-center py-8" style={{ color: "#64748b" }}>No sales for this date</td>
-                                        </tr>
-                                    )}
+                                    {(() => {
+                                        const billsMap = recentSales.reduce((acc, sale) => {
+                                            const key = sale.billId || sale.id;
+                                            if (!acc[key]) {
+                                                acc[key] = {
+                                                    id: key,
+                                                    isBill: !!sale.billId,
+                                                    date: sale.createdAt,
+                                                    customerName: sale.customerName,
+                                                    salesPersonName: sale.salesPersonName,
+                                                    totalAmount: 0,
+                                                    totalItems: 0,
+                                                    sales: []
+                                                };
+                                            }
+                                            acc[key].sales.push(sale);
+                                            acc[key].totalAmount += sale.quantitySold * sale.pricePerUnit;
+                                            acc[key].totalItems += sale.quantitySold;
+                                            return acc;
+                                        }, {} as Record<string, any>);
+                                        
+                                        const groupedBills = Object.values(billsMap).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                        if (groupedBills.length === 0) {
+                                            return (
+                                                <tr>
+                                                    <td colSpan={5} className="text-center py-8" style={{ color: "#64748b" }}>No sales for this date</td>
+                                                </tr>
+                                            );
+                                        }
+
+                                        return groupedBills.map((bill: any) => (
+                                            <tr key={bill.id}>
+                                                <td className="font-medium" style={{ color: "#e2e8f0" }}>
+                                                    {bill.isBill && <div className="text-xs mb-1" style={{ color: "#818cf8" }}>{bill.id}</div>}
+                                                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                                        {bill.sales.map((s: any) => (
+                                                            <span key={s.id}>{s.quantitySold}x {s.productName}</span>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td><span className="dash-num">{bill.totalItems}</span></td>
+                                                <td>{bill.customerName || "—"}</td>
+                                                <td>{bill.salesPersonName}</td>
+                                                <td style={{ color: "#34d399", fontWeight: 600 }}>₹{bill.totalAmount.toLocaleString()}</td>
+                                            </tr>
+                                        ));
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
@@ -556,7 +645,7 @@ export default function AdminDashboard() {
                                         <tr key={p.id}>
                                             <td className="font-medium" style={{ color: "#e2e8f0" }}>{p.productName}</td>
                                             <td><span className="dash-num">{p.quantity}</span></td>
-                                            <td>{p.shopNumber || p.customerName || "—"}</td>
+                                            <td>{p.customerName || "—"}</td>
                                             <td>{p.salesPersonName}</td>
                                             <td>
                                                 <span className="badge" style={{
@@ -623,6 +712,98 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* Returns Tab */}
+                {activeTab === "returns" && (() => {
+                    const filtered = returnFilter === "all" ? allReturns : allReturns.filter(r => r.type === returnFilter);
+                    const defectiveCount = allReturns.filter(r => r.type === "defective").length;
+                    const returnCount = allReturns.filter(r => r.type === "return").length;
+
+                    return (
+                        <div className="dash-section fade-in" style={{ borderRadius: 20, background: "rgba(15,10,46,0.6)", backdropFilter: "blur(12px)", border: "1px solid rgba(239,68,68,0.15)", overflow: "hidden" }}>
+                            <div className="dash-section-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1px solid rgba(239,68,68,0.08)" }}>
+                                <h3 className="dash-section-title" style={{ color: "#fca5a5" }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                    Returns & Defective Products
+                                </h3>
+                                <button onClick={handleExportReturns} className="dash-export-btn" style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                                    Export CSV
+                                </button>
+                            </div>
+
+                            {/* Filter Sub-tabs */}
+                            <div style={{ display: "flex", gap: 8, padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                {(["all", "defective", "return"] as const).map((filter) => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => setReturnFilter(filter)}
+                                        style={{
+                                            padding: "6px 16px",
+                                            borderRadius: 8,
+                                            fontSize: "0.8rem",
+                                            fontWeight: 700,
+                                            cursor: "pointer",
+                                            border: "none",
+                                            background: returnFilter === filter
+                                                ? (filter === "defective" ? "rgba(239,68,68,0.2)" : filter === "return" ? "rgba(245,158,11,0.2)" : "rgba(99,102,241,0.2)")
+                                                : "rgba(255,255,255,0.05)",
+                                            color: returnFilter === filter
+                                                ? (filter === "defective" ? "#f87171" : filter === "return" ? "#fbbf24" : "#818cf8")
+                                                : "#64748b",
+                                        }}
+                                    >
+                                        {filter === "all" ? `All (${allReturns.length})` : filter === "defective" ? `🔴 Defective (${defectiveCount})` : `🟡 Returns (${returnCount})`}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="dash-table-wrap overflow-x-auto">
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Product</th>
+                                            <th>Qty</th>
+                                            <th>Reason</th>
+                                            <th>Sales Person</th>
+                                            <th>Customer/Shop</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((r) => (
+                                            <tr key={r.id}>
+                                                <td>
+                                                    <span className="badge" style={{
+                                                        background: r.type === "defective" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
+                                                        color: r.type === "defective" ? "#f87171" : "#fbbf24",
+                                                        border: `1px solid ${r.type === "defective" ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.3)"}`,
+                                                    }}>
+                                                        {r.type === "defective" ? "🔴 DEFECTIVE" : "🟡 RETURN"}
+                                                    </span>
+                                                </td>
+                                                <td className="font-medium" style={{ color: "#e2e8f0" }}>{r.productName}</td>
+                                                <td><span className="dash-num">{r.quantity}</span></td>
+                                                <td style={{ color: "#94a3b8", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.reason}</td>
+                                                <td>{r.salesPersonName}</td>
+                                                <td style={{ color: "#94a3b8" }}>{r.customerName || "—"}</td>
+                                                <td style={{ color: "#94a3b8" }}>{r.date}</td>
+                                            </tr>
+                                        ))}
+                                        {filtered.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="text-center py-8" style={{ color: "#64748b" }}>
+                                                    {returnFilter === "all" ? "No returns or defective products recorded yet" : `No ${returnFilter} products found`}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    );
+                })()}
             </main>
 
             {/* ===== MODALS ===== */}
@@ -667,7 +848,7 @@ export default function AdminDashboard() {
                         const q = shopSearch.toLowerCase();
                         const filtered = allSales.filter(s => {
                             if (!shopSearch) return true;
-                            const searchStr = `${s.salesPersonName} ${s.productName} ${s.customerName || ""} ${s.shopNumber || ""} ${s.date}`.toLowerCase();
+                            const searchStr = `${s.salesPersonName} ${s.productName} ${s.customerName || ""} ${s.date}`.toLowerCase();
                             return searchStr.includes(q);
                         }).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
                         const grandTotal = filtered.reduce((sum, s) => sum + s.quantitySold * s.pricePerUnit, 0);
@@ -714,7 +895,7 @@ export default function AdminDashboard() {
                                                 <th className="text-left pl-4">Date</th>
                                                 <th className="text-left">Sales Person</th>
                                                 <th className="text-left">Product</th>
-                                                <th className="text-left">Customer / Shop</th>
+                                                <th className="text-right">Rate (W vs S)</th>
                                                 <th className="text-right">Qty</th>
                                                 <th className="text-right pr-4">Amount</th>
                                             </tr>
@@ -734,7 +915,12 @@ export default function AdminDashboard() {
                                                                 </div>
                                                             </td>
                                                             <td className="text-sm font-semibold" style={{ color: "#60a5fa" }}>{s.productName}</td>
-                                                            <td className="text-sm" style={{ color: "#94a3b8" }}>{s.shopNumber || s.customerName || "—"}</td>
+                                                            <td className="text-sm" style={{ color: "#94a3b8" }}>{s.customerName || "—"}</td>
+                                                            <td className="text-right text-xs font-bold" style={{ color: "#64748b" }}>
+                                                                <span style={{ color: "#94a3b8" }}>₹{s.warehousePrice || s.pricePerUnit}</span>
+                                                                <span className="mx-1">→</span>
+                                                                <span style={{ color: "#34d399" }}>₹{s.pricePerUnit}</span>
+                                                            </td>
                                                             <td className="text-right text-sm font-bold" style={{ color: "#cbd5e1" }}>{s.quantitySold}</td>
                                                             <td className="text-right pr-4 font-bold text-sm" style={{ color: "#34d399" }}>₹{(s.quantitySold * s.pricePerUnit).toLocaleString()}</td>
                                                         </tr>
@@ -769,11 +955,11 @@ export default function AdminDashboard() {
                                 {(() => {
                                     const map: Record<string, { shopName: string, salesPerson: string, product: string, qty: number }> = {};
                                     recentSales.forEach(s => {
-                                        const shopName = s.shopNumber || s.customerName || "Unknown Shop/Customer";
-                                        const searchStr = `${shopName} ${s.customerName} ${s.productName}`.toLowerCase();
+                                        const customerName = s.customerName || "Unknown Customer";
+                                        const searchStr = `${customerName} ${s.productName}`.toLowerCase();
                                         if (shopSearch && !searchStr.includes(shopSearch.toLowerCase())) return;
-                                        const key = `${shopName}-${s.salesPersonName}-${s.productName}`;
-                                        if (!map[key]) map[key] = { shopName, salesPerson: s.salesPersonName, product: s.productName, qty: 0 };
+                                        const key = `${customerName}-${s.salesPersonName}-${s.productName}`;
+                                        if (!map[key]) map[key] = { shopName: customerName, salesPerson: s.salesPersonName, product: s.productName, qty: 0 };
                                         map[key].qty += s.quantitySold;
                                     });
                                     const groupedStock = Object.values(map).sort((a, b) => b.qty - a.qty);

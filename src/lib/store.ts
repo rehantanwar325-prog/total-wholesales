@@ -31,17 +31,20 @@ export interface DispatchEntry {
 
 export interface SaleEntry {
     id: string;
+    billId?: string;
     productId: string;
     productName: string;
     quantitySold: number;
     customerName: string;
     customerPhone?: string;
     customerAddress?: string;
-    shopNumber?: string;
     salesPersonId: string;
     salesPersonName: string;
     pricePerUnit: number;
+    warehousePrice: number;
     date: string;
+    paymentMethod?: "cash" | "online" | "credit";
+    creditDueDate?: string;
     createdAt: string;
 }
 
@@ -53,12 +56,26 @@ export interface PrebookingEntry {
     customerName: string;
     customerPhone?: string;
     customerAddress?: string;
-    shopNumber?: string;
     salesPersonId: string;
     salesPersonName: string;
     pricePerUnit: number;
+    warehousePrice: number;
     deliveryDate: string;
     status: "pending" | "fulfilled" | "cancelled";
+    createdAt: string;
+}
+
+export interface ReturnEntry {
+    id: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    reason: string;
+    type: "defective" | "return";
+    salesPersonId: string;
+    salesPersonName: string;
+    customerName?: string;
+    date: string;
     createdAt: string;
 }
 
@@ -166,6 +183,9 @@ export function initializeStore(): void {
     }
     if (!localStorage.getItem("tw_prebookings")) {
         safeSet("tw_prebookings", []);
+    }
+    if (!localStorage.getItem("tw_returns")) {
+        safeSet("tw_returns", []);
     }
 }
 
@@ -394,6 +414,34 @@ export function updatePrebookingStatus(id: string, status: PrebookingEntry["stat
     prebookings[index].status = status;
     safeSet("tw_prebookings", prebookings);
     return prebookings[index];
+}
+
+// ===== RETURNS =====
+export function getReturns(): ReturnEntry[] {
+    return safeGet<ReturnEntry[]>("tw_returns", []);
+}
+
+export function addReturn(entry: Omit<ReturnEntry, "id" | "createdAt">): ReturnEntry {
+    const returns = getReturns();
+    const newEntry: ReturnEntry = {
+        ...entry,
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+    };
+    returns.push(newEntry);
+    safeSet("tw_returns", returns);
+
+    // Only "return" type adds stock back to warehouse, NOT "defective"
+    if (entry.type === "return") {
+        const products = getProducts();
+        const productIndex = products.findIndex(p => p.id === entry.productId);
+        if (productIndex !== -1) {
+            products[productIndex].totalStock += entry.quantity;
+            safeSet("tw_products", products);
+        }
+    }
+
+    return newEntry;
 }
 
 // ===== CALCULATIONS =====

@@ -139,8 +139,8 @@ export default function DispatchPage() {
             setSalesPersonId("");
             setSpSearch("");
             setTimeout(() => setSuccess(""), 4000);
-        } catch (err: any) {
-            setError(err.message || "Failed to create dispatch");
+        } catch (err: unknown) {
+            setError((err as Error).message || "Failed to create dispatch");
             setProducts(getProducts());
         }
     };

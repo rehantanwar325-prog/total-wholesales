@@ -20,6 +20,7 @@ export default function ReportsPage() {
     const [driverFilter, setDriverFilter] = useState("");
     const [salesPersons, setSalesPersons] = useState<User[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedBill, setSelectedBill] = useState<any>(null);
 
     useEffect(() => {
         initializeStore();
@@ -61,7 +62,6 @@ export default function ReportsPage() {
                 s.salesPersonName.toLowerCase().includes(q) ||
                 s.date.includes(q) ||
                 (s.customerName && s.customerName.toLowerCase().includes(q)) ||
-                (s.shopNumber && s.shopNumber.toLowerCase().includes(q)) ||
                 (s.customerPhone && s.customerPhone.toLowerCase().includes(q)) ||
                 (s.customerAddress && s.customerAddress.toLowerCase().includes(q))
             );
@@ -74,12 +74,16 @@ export default function ReportsPage() {
         const { dispatches, sales } = getFilteredData();
         if (activeReport === "daily" || activeReport === "driver") {
             const data = sales.map((s) => ({
+                "Bill ID": s.billId || s.id,
                 Date: s.date,
                 Product: s.productName,
                 "Qty Sold": s.quantitySold,
-                "Price/kg": s.pricePerUnit,
+                "Whse Price": s.warehousePrice || s.pricePerUnit,
+                "Sale Price/kg": s.pricePerUnit,
                 Customer: s.customerName || "—",
                 "Sales Person": s.salesPersonName,
+                Payment: s.paymentMethod === "credit" ? `CREDIT (Due: ${s.creditDueDate || "N/A"})` : s.paymentMethod?.toUpperCase() || "CASH",
+                "Due Date": s.creditDueDate || "—",
                 Amount: s.quantitySold * s.pricePerUnit,
             }));
             exportToCSV(data, `sales_report_${activeReport}`);
@@ -295,56 +299,125 @@ export default function ReportsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sales.map((s) => (
-                                        <tr key={s.id} className="transition-colors hover:bg-white/5 border-b border-white/5">
-                                            <td className="py-4 px-6 text-sm" style={{ color: "#cbd5e1" }}>{s.date}</td>
-                                            <td className="py-4 px-6 text-sm font-bold" style={{ color: "#f8fafc" }}>{s.productName}</td>
-                                            <td className="py-4 px-6 text-sm font-bold" style={{ color: "#60a5fa" }}>{s.quantitySold}</td>
-                                            <td className="py-4 px-6">
-                                                {s.customerName || s.shopNumber || s.customerPhone || s.customerAddress ? (
-                                                    <div className="flex flex-col gap-1 max-w-[250px]">
-                                                        {(s.customerName || s.shopNumber) && (
-                                                            <div className="inline-flex items-center gap-1.5 font-bold text-sm" style={{ color: "#e2e8f0" }}>
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                                                {s.customerName}{s.customerName && s.shopNumber ? " - " : ""}{s.shopNumber}
+                                    {(() => {
+                                        const billsMap = sales.reduce((acc, sale) => {
+                                            const key = sale.billId || sale.id;
+                                            if (!acc[key]) {
+                                                acc[key] = {
+                                                    id: key,
+                                                    isBill: !!sale.billId,
+                                                    date: sale.createdAt,
+                                                    displayDate: sale.date,
+                                                    customerName: sale.customerName,
+                                                    salesPersonName: sale.salesPersonName,
+                                                    customerPhone: sale.customerPhone,
+                                                    customerAddress: sale.customerAddress,
+                                                    paymentMethod: sale.paymentMethod,
+                                                    creditDueDate: sale.creditDueDate,
+                                                    totalAmount: 0,
+                                                    totalItems: 0,
+                                                    sales: []
+                                                };
+                                            }
+                                            acc[key].sales.push(sale);
+                                            acc[key].totalAmount += sale.quantitySold * sale.pricePerUnit;
+                                            acc[key].totalItems += sale.quantitySold;
+                                            return acc;
+                                        }, {} as Record<string, any>);
+                                        
+                                        const groupedBills = Object.values(billsMap).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                        if (groupedBills.length === 0) {
+                                            return (
+                                                <tr>
+                                                    <td colSpan={6} className="text-center py-12">
+                                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 text-slate-400 mb-3">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                                        </div>
+                                                        <p className="text-slate-400 font-medium">No sales records found</p>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
+
+                                        return groupedBills.map((bill: any) => (
+                                            <tr key={bill.id} className="transition-colors hover:bg-white/5 border-b border-white/5">
+                                                <td className="py-4 px-6 text-sm" style={{ color: "#cbd5e1" }}>{bill.displayDate}</td>
+                                                <td className="py-4 px-6 text-sm font-bold" style={{ color: "#f8fafc" }}>
+                                                    {bill.isBill && <div className="text-xs mb-1" style={{ color: "#818cf8" }}>{bill.id}</div>}
+                                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                                        {bill.sales.map((s: any) => (
+                                                            <div key={s.id} className="flex flex-col border-b border-white/5 pb-1 last:border-0">
+                                                                <span>{s.quantitySold}x {s.productName}</span>
+                                                                <span className="text-[10px] font-medium" style={{ color: "#94a3b8" }}>
+                                                                    Whse: ₹{s.warehousePrice || s.pricePerUnit} • Sold: ₹{s.pricePerUnit}
+                                                                </span>
                                                             </div>
-                                                        )}
-                                                        {s.customerPhone && (
-                                                            <div className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: "#94a3b8" }}>
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                                                                {s.customerPhone}
-                                                            </div>
-                                                        )}
-                                                        {s.customerAddress && (
-                                                            <div className="inline-flex items-center gap-1.5 text-xs truncate" style={{ color: "#64748b" }} title={s.customerAddress}>
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                                                                {s.customerAddress}
-                                                            </div>
-                                                        )}
+                                                        ))}
                                                     </div>
-                                                ) : (
-                                                    <span className="text-sm italic opacity-50">Not Provided</span>
-                                                )}
-                                            </td>
-                                            <td className="py-4 px-6 text-sm">
-                                                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                                    {s.salesPersonName.charAt(0)}
-                                                    <span className="text-indigo-200">{s.salesPersonName}</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-6 text-sm font-black" style={{ color: "#34d399" }}>₹{(s.quantitySold * s.pricePerUnit).toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                    {sales.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="text-center py-12">
-                                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 text-slate-400 mb-3">
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                                </div>
-                                                <p className="text-slate-400 font-medium">No sales records found</p>
-                                            </td>
-                                        </tr>
-                                    )}
+                                                </td>
+                                                <td className="py-4 px-6 text-sm font-bold" style={{ color: "#60a5fa" }}>{bill.totalItems}</td>
+                                                <td className="py-4 px-6">
+                                                    {bill.customerName || bill.shopNumber || bill.customerPhone || bill.customerAddress ? (
+                                                        <div className="flex flex-col gap-1 max-w-[250px]">
+                                                            {(bill.customerName || bill.shopNumber) && (
+                                                                <div className="inline-flex items-center gap-1.5 font-bold text-sm" style={{ color: "#e2e8f0" }}>
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                                                    {bill.customerName}{bill.customerName && bill.shopNumber ? " - " : ""}{bill.shopNumber}
+                                                                </div>
+                                                            )}
+                                                            {bill.customerPhone && (
+                                                                <div className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: "#94a3b8" }}>
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                                                    {bill.customerPhone}
+                                                                </div>
+                                                            )}
+                                                            {bill.customerAddress && (
+                                                                <div className="inline-flex items-center gap-1.5 text-xs truncate" style={{ color: "#64748b" }} title={bill.customerAddress}>
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                                                    {bill.customerAddress}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-sm italic opacity-50">Not Provided</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-6 text-sm">
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-bold transition-all" style={{ 
+                                                                background: bill.paymentMethod === "credit" ? "rgba(245,158,11,0.1)" : "rgba(99,102,241,0.1)", 
+                                                                color: bill.paymentMethod === "credit" ? "#fbbf24" : "#a78bfa",
+                                                                border: `1px solid ${bill.paymentMethod === "credit" ? "rgba(245,158,11,0.2)" : "rgba(99,102,241,0.2)"}`
+                                                            }}>
+                                                                {bill.paymentMethod === "credit" ? "💳 Credit" : bill.paymentMethod === "online" ? "📱 Online" : "💵 Cash"}
+                                                            </div>
+                                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">
+                                                                {bill.salesPersonName}
+                                                            </div>
+                                                            {bill.paymentMethod === "credit" && bill.creditDueDate && (
+                                                                <div className="text-[11px] font-black text-amber-500 mt-1.5 flex items-center gap-1.5 p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                                                    <span className="uppercase tracking-tight">Payment Due: {bill.creditDueDate}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-sm font-black" style={{ color: "#34d399" }}>
+                                                    <div className="flex flex-col gap-2 items-start">
+                                                        <span>₹{bill.totalAmount.toLocaleString()}</span>
+                                                        <button 
+                                                            onClick={() => setSelectedBill(bill)} 
+                                                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-1"
+                                                        >
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                                            View Bill
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ));
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
@@ -422,6 +495,118 @@ export default function ReportsPage() {
                     </div>
                 )}
             </main>
+
+            {/* Invoice Modal */}
+            {selectedBill && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 print:p-0" style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}>
+                    <style>{`
+                        @media print {
+                            body * {
+                                visibility: hidden;
+                            }
+                            #invoice-modal, #invoice-modal * {
+                                visibility: visible;
+                            }
+                            #invoice-modal {
+                                position: absolute;
+                                left: 0;
+                                top: 0;
+                                width: 100%;
+                                background: white !important;
+                                color: black !important;
+                                box-shadow: none !important;
+                                margin: 0 !important;
+                                padding: 20px !important;
+                            }
+                            .no-print {
+                                display: none !important;
+                            }
+                        }
+                    `}</style>
+                    <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white text-black shadow-2xl flex flex-col relative" id="invoice-modal">
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-2 p-4 border-b border-gray-100 no-print sticky top-0 bg-white z-10">
+                            <button onClick={() => window.print()} className="px-5 py-2 rounded-xl font-bold flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors border border-indigo-100">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                Print Bill
+                            </button>
+                            <button onClick={() => setSelectedBill(null)} className="px-5 py-2 rounded-xl font-bold flex items-center gap-2 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                Close
+                            </button>
+                        </div>
+                        
+                        {/* Invoice Content */}
+                        <div className="p-6 sm:p-10 flex-col flex gap-8">
+                            {/* Header */}
+                            <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6">
+                                <div>
+                                    <h2 className="text-3xl font-black uppercase tracking-tight" style={{ color: "#0f172a" }}>TOTAL WHOLESALL</h2>
+                                    <p className="text-sm font-bold text-slate-500 mt-1">Salesperson: <span className="text-slate-800">{selectedBill.sales[0]?.salesPersonName || "N/A"}</span></p>
+                                </div>
+                                <div className="text-right">
+                                    <h1 className="text-2xl font-black text-slate-300 uppercase tracking-widest mb-2">INVOICE</h1>
+                                    <p className="text-sm font-bold text-slate-800">Bill No: {selectedBill.isBill ? selectedBill.id.split('-')[1] || selectedBill.id : selectedBill.id}</p>
+                                    <p className="text-sm font-medium text-slate-500">Date: {selectedBill.displayDate}</p>
+                                    <p className="text-sm font-medium text-slate-500">Time: {new Date(selectedBill.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</p>
+                                </div>
+                            </div>
+                            
+                            {/* Customer Details */}
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Billed To:</p>
+                                <h3 className="text-lg font-bold text-slate-800">{selectedBill.customerName || "Cash Customer"}</h3>
+                                {selectedBill.sales[0]?.customerPhone && <p className="text-sm font-medium text-slate-600">Ph: {selectedBill.sales[0].customerPhone}</p>}
+                                {selectedBill.sales[0]?.customerAddress && <p className="text-sm font-medium text-slate-600">{selectedBill.sales[0].customerAddress}</p>}
+                                {selectedBill.sales[0]?.shopNumber && <p className="text-sm font-medium text-slate-600">Shop No: {selectedBill.sales[0].shopNumber}</p>}
+                            </div>
+                            
+                            {/* Table */}
+                            <div className="mt-4">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b-2 border-slate-200">
+                                            <th className="py-3 font-bold text-slate-800 text-sm">#</th>
+                                            <th className="py-3 font-bold text-slate-800 text-sm">Item Description</th>
+                                            <th className="py-3 font-bold text-slate-800 text-sm text-center">Qty</th>
+                                            <th className="py-3 font-bold text-slate-800 text-sm text-right">Rate</th>
+                                            <th className="py-3 font-bold text-slate-800 text-sm text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedBill.sales.map((item: any, idx: number) => (
+                                            <tr key={idx} className="border-b border-slate-100">
+                                                <td className="py-4 text-sm font-medium text-slate-500">{idx + 1}</td>
+                                                <td className="py-4 text-sm font-bold text-slate-800">{item.productName}</td>
+                                                <td className="py-4 text-sm font-bold text-slate-800 text-center">{item.quantitySold}</td>
+                                                <td className="py-4 text-sm font-medium text-slate-600 text-right">₹{item.pricePerUnit.toLocaleString()}</td>
+                                                <td className="py-4 text-sm font-bold text-slate-800 text-right">₹{(item.quantitySold * item.pricePerUnit).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {/* Totals */}
+                            <div className="flex justify-between items-end border-t-2 border-slate-800 pt-6 mt-4">
+                                <div>
+                                    <p className="text-sm font-bold text-slate-500 mb-1">Payment Method: <span className="text-slate-800 uppercase">{selectedBill.paymentMethod || "CASH"}</span></p>
+                                    <p className="text-xs text-slate-400 font-bold">Total Items: {selectedBill.totalItems}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-slate-500 mb-1 uppercase tracking-widest">Grand Total</p>
+                                    <p className="text-4xl font-black text-slate-800 tracking-tight">₹{selectedBill.totalAmount.toLocaleString()}</p>
+                                </div>
+                            </div>
+                            
+                            {/* Footer */}
+                            <div className="text-center mt-12 mb-4">
+                                <p className="text-sm font-bold text-slate-400 italic">Thank you for your business!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
